@@ -16,9 +16,10 @@ class CollectContextAction : AnAction() {
 
             val element = findPsiElement(file, editor) ?: return
             val testMethod = PsiTreeUtil.getParentOfType(element, PsiMethod::class.java) ?: return
-            val methods = testMethod.allCalledMethods()
-            for (m in methods) {
-                println("$m, ${m.containingClass}")
+
+            val fields = testMethod.getUsedFields()
+            for (m in fields) {
+                println("$m, ${m.containingClass} ")
             }
         }
     }
@@ -32,6 +33,21 @@ class CollectContextAction : AnAction() {
         return element
     }
 
+    private fun PsiMethod.getUsedFields(): HashSet<PsiField> {
+        val fields = HashSet<PsiField>()
+        this.accept(object : JavaRecursiveElementVisitor() {
+            override fun visitReferenceExpression(expression: PsiReferenceExpression) {
+                super.visitReferenceExpression(expression)
+                expression.resolve()?.let {
+                    if (it is PsiField) {
+                        fields.add(it)
+                    }
+                }
+            }
+        })
+        return fields
+    }
+
     private fun PsiMethod.allCalledMethods(): LinkedHashSet<PsiMethod> {
         val calledMethods = LinkedHashSet<PsiMethod>()
         this.accept(object : JavaRecursiveElementVisitor() {
@@ -39,7 +55,27 @@ class CollectContextAction : AnAction() {
                 super.visitMethodCallExpression(expression)
                 expression.resolveMethod()?.let { calledMethods.add(it) }
             }
+
         })
         return calledMethods
     }
+
+//    private fun PsiMethod.allCalledConstructors(): LinkedHashSet<PsiMethod> {
+//        val calledMethods = LinkedHashSet<PsiMethod>()
+//        this.accept(object : JavaRecursiveElementVisitor() {
+//            override fun visitReferenceElement(reference: PsiJavaCodeReferenceElement) {
+//                super.visitReferenceElement(reference)
+//                print("$reference ")
+//                reference.resolve()?.let {
+//                    println(it)
+//                    if (it is PsiMethod) {
+//                        calledMethods.add(it)
+//
+//                    }
+//                }
+//            }
+//
+//        })
+//        return calledMethods
+//    }
 }
