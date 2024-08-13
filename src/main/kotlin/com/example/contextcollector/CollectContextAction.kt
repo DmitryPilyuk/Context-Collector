@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 
@@ -15,12 +16,9 @@ class CollectContextAction : AnAction() {
             val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
 
             val element = findPsiElement(file, editor) ?: return
-            val testMethod = PsiTreeUtil.getParentOfType(element, PsiMethod::class.java) ?: return
+            val testClass = PsiTreeUtil.getParentOfType(element, PsiClass::class.java) ?: return
+            collectContext(testClass, project)
 
-            val fields = testMethod.getUsedFields()
-            for (m in fields) {
-                println("$m, ${m.containingClass} ")
-            }
         }
     }
 
@@ -48,8 +46,8 @@ class CollectContextAction : AnAction() {
         return fields
     }
 
-    private fun PsiMethod.allCalledMethods(): LinkedHashSet<PsiMethod> {
-        val calledMethods = LinkedHashSet<PsiMethod>()
+    private fun PsiMethod.allCalledMethods(): HashSet<PsiMethod> {
+        val calledMethods = HashSet<PsiMethod>()
         this.accept(object : JavaRecursiveElementVisitor() {
             override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
                 super.visitMethodCallExpression(expression)
@@ -60,6 +58,20 @@ class CollectContextAction : AnAction() {
         return calledMethods
     }
 
+    private fun collectContext(testClass: PsiClass, project: Project) {
+        val context = Context(project)
+        val methods = testClass.allMethods
+        methods.forEach { method ->
+            val calledMethods = method.allCalledMethods()
+            calledMethods.forEach { calledM ->
+                val clazz = calledM.containingClass
+                if (clazz != null) {
+                    context.add(clazz, calledM)
+                }
+            }
+        }
+        context.printContext()
+    }
 //    private fun PsiMethod.allCalledConstructors(): LinkedHashSet<PsiMethod> {
 //        val calledMethods = LinkedHashSet<PsiMethod>()
 //        this.accept(object : JavaRecursiveElementVisitor() {
