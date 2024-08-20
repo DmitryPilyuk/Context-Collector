@@ -2,6 +2,7 @@ package com.example.contextcollector
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
+import com.intellij.psi.util.PsiTreeUtil
 import java.util.LinkedList
 import java.util.Queue
 
@@ -11,7 +12,7 @@ class ContextCollector(project: Project) {
     fun collect(testClass: PsiClass) {
         val initialMethods = testClass
             .allMethods
-            .flatMap { method -> method.allCalledMethods() }
+            .flatMap { method -> method.getCalledMethods() }
 
         processMethodsQueue(LinkedList(initialMethods))
     }
@@ -23,7 +24,7 @@ class ContextCollector(project: Project) {
             val method = methodsQueue.poll()
 
             method
-                .allCalledMethods()
+                .getCalledMethods()
                 .filterNot { m -> m in marked }
                 .forEach { m ->
                     methodsQueue.offer(m)
@@ -35,7 +36,7 @@ class ContextCollector(project: Project) {
         }
     }
 
-    private fun PsiMethod.allCalledMethods(): HashSet<PsiMethod> {
+    /*private fun PsiMethod.allCalledMethods(): HashSet<PsiMethod> {
         val calledMethods = HashSet<PsiMethod>()
         this.accept(object : JavaRecursiveElementVisitor() {
             override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
@@ -51,12 +52,19 @@ class ContextCollector(project: Project) {
         return calledMethods
     }
 
-    /**
-     * fun getCalledMethods() =
-     *         PsiTreeUtil.collectElementsOfType(psiMethod, PsiCallExpression::class.java)
-     *             .asSequence()
-     *             .mapNotNull { it.resolveMethod() }
      */
+
+    fun PsiMethod.getAccessedFields() =
+        PsiTreeUtil.collectElementsOfType(this, PsiReferenceExpression::class.java)
+            .asSequence()
+            .mapNotNull { it.resolve() as? PsiField }
+
+
+    fun PsiMethod.getCalledMethods() =
+        PsiTreeUtil.collectElementsOfType(this, PsiCallExpression::class.java)
+            .asSequence()
+            .mapNotNull { it.resolveMethod() }
+
 
     fun printContext() {
         context.printContext()

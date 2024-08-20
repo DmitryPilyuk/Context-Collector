@@ -42,12 +42,11 @@ class Context(private val project: Project) {
                     }
 
                     usedMethods
-                        .flatMap { it.getUsedFields() }
+                        .flatMap { it.getUsedFields() }.toHashSet()
                         .forEach { field -> newClass.add(field) }
 
                     newClass
                 }
-                ?: null
         }
 
         return classes
