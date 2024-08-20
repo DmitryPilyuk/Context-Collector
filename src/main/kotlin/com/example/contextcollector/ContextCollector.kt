@@ -5,23 +5,33 @@ import com.intellij.psi.*
 import java.util.LinkedList
 import java.util.Queue
 
-class ContextCollector(private val project: Project) {
-    private val queue: Queue<PsiMethod> = LinkedList()
+class ContextCollector(project: Project) {
     private val context = Context(project)
 
     fun collect(testClass: PsiClass) {
+        val initialMethods = testClass
+            .allMethods
+            .flatMap { method -> method.allCalledMethods() }
+
+        processMethodsQueue(LinkedList(initialMethods))
+    }
+
+    private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>) {
         val marked = HashSet<PsiMethod>()
-        val methods = testClass.allMethods
-        methods.forEach { method -> method.allCalledMethods().forEach { m -> queue.offer(m) } }
-        while (!queue.isEmpty()) {
-            val method = queue.poll()
-            method.allCalledMethods().forEach { m ->
-                if (!marked.contains(m)) {
-                    queue.offer(m)
+
+        while (!methodsQueue.isEmpty()) {
+            val method = methodsQueue.poll()
+
+            method
+                .allCalledMethods()
+                .filterNot { m -> m in marked }
+                .forEach { m ->
+                    methodsQueue.offer(m)
                     marked.add(m)
                 }
-            }
-            method.containingClass?.let { context.add(it, method) }
+
+            method.containingClass
+                ?.let { context.add(it, method) }
         }
     }
 
@@ -40,7 +50,14 @@ class ContextCollector(private val project: Project) {
         })
         return calledMethods
     }
-    
+
+    /**
+     * fun getCalledMethods() =
+     *         PsiTreeUtil.collectElementsOfType(psiMethod, PsiCallExpression::class.java)
+     *             .asSequence()
+     *             .mapNotNull { it.resolveMethod() }
+     */
+
     fun printContext() {
         context.printContext()
     }
