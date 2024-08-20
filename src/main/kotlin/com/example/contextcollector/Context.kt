@@ -59,7 +59,7 @@ class Context(private val project: Project) {
             override fun visitReferenceExpression(expression: PsiReferenceExpression) {
                 super.visitReferenceExpression(expression)
                 expression.resolve()?.let {
-                    if (it is PsiField) {
+                    if (it is PsiField && it.containingClass == this@getUsedFields.containingClass) {
                         fields.add(it)
                     }
                 }
