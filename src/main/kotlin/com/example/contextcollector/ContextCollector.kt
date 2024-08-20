@@ -30,9 +30,11 @@ class ContextCollector(project: Project) {
                     methodsQueue.offer(m)
                     marked.add(m)
                 }
+            method.getAccessedFields().forEach { field ->
+                context.add(field)
 
-            method.containingClass
-                ?.let { context.add(it, method) }
+            }
+            context.add(method)
         }
     }
 
@@ -54,13 +56,13 @@ class ContextCollector(project: Project) {
 
      */
 
-    fun PsiMethod.getAccessedFields() =
+    private fun PsiMethod.getAccessedFields() =
         PsiTreeUtil.collectElementsOfType(this, PsiReferenceExpression::class.java)
             .asSequence()
             .mapNotNull { it.resolve() as? PsiField }
 
 
-    fun PsiMethod.getCalledMethods() =
+    private fun PsiMethod.getCalledMethods() =
         PsiTreeUtil.collectElementsOfType(this, PsiCallExpression::class.java)
             .asSequence()
             .mapNotNull { it.resolveMethod() }

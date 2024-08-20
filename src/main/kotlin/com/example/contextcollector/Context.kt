@@ -3,13 +3,17 @@ package com.example.contextcollector
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.CodeStyleManager
+import org.jetbrains.kotlin.j2k.getContainingClass
 
 class Context(private val project: Project) {
-    private val map = HashMap<PsiClass, HashSet<PsiMethod>>()
+    private val map = HashMap<PsiClass, HashSet<PsiElement>>()
 
-    fun add(clazz: PsiClass, method: PsiMethod) {
-        map.getOrPut(clazz) { HashSet() }.add(method)
+    fun add(member: PsiMember) {
+        member.containingClass?.let {
+            map.getOrPut(it) { HashSet() }.add(member)
+        }
     }
+
 
     fun printContext() {
         val contextClasses = buildContext()
@@ -26,7 +30,7 @@ class Context(private val project: Project) {
 
         val classes = map.mapNotNull { entry ->
             val analyzedClass = entry.key
-            val usedMethods = entry.value
+            val usedElements = entry.value
 
             entry.key.name
                 ?.let { factory.createClass(it) }
@@ -37,13 +41,9 @@ class Context(private val project: Project) {
                         }
                     }
 
-                    usedMethods.forEach { method ->
-                        newClass.add(method)
+                    usedElements.forEach { elements ->
+                        newClass.add(elements)
                     }
-
-                    usedMethods
-                        .flatMap { it.getUsedFields() }.toHashSet()
-                        .forEach { field -> newClass.add(field) }
 
                     newClass
                 }
