@@ -3,7 +3,7 @@ package com.example.contextcollector
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.CodeStyleManager
-import org.jetbrains.kotlin.j2k.getContainingClass
+
 
 class Context(private val project: Project) {
     private val map = HashMap<PsiClass, HashSet<PsiElement>>()
@@ -15,15 +15,17 @@ class Context(private val project: Project) {
     }
 
 
-    fun printContext() {
+    fun getText(): String {
         val contextClasses = buildContext()
-
+        val strBuilder = StringBuilder()
         val codeStyleManager = CodeStyleManager.getInstance(project)
         contextClasses.forEach {
             codeStyleManager.reformat(it)
-            println(it.text)
+            strBuilder.append("${it.text}\n")
         }
+        return strBuilder.toString()
     }
+
 
     private fun buildContext(): List<PsiClass> {
         val factory = PsiElementFactory.getInstance(project)
@@ -32,7 +34,7 @@ class Context(private val project: Project) {
             val analyzedClass = entry.key
             val usedElements = entry.value
 
-            entry.key.name
+            analyzedClass.name
                 ?.let { factory.createClass(it) }
                 ?.let { newClass ->
                     analyzedClass.annotations.forEach { annotation ->
@@ -41,8 +43,9 @@ class Context(private val project: Project) {
                         }
                     }
 
-                    usedElements.forEach { elements ->
-                        newClass.add(elements)
+                    usedElements.forEach { element ->
+                        println("${element.text} ${analyzedClass.name}")
+                        newClass.add(element)
                     }
 
                     newClass
@@ -52,26 +55,4 @@ class Context(private val project: Project) {
         return classes
     }
 
-    private fun PsiMethod.getUsedFields(): HashSet<PsiField> {
-        val fields = HashSet<PsiField>()
-        this.accept(object : JavaRecursiveElementVisitor() {
-            override fun visitReferenceExpression(expression: PsiReferenceExpression) {
-                super.visitReferenceExpression(expression)
-                expression.resolve()?.let {
-                    if (it is PsiField && it.containingClass == this@getUsedFields.containingClass) {
-                        fields.add(it)
-                    }
-                }
-            }
-        })
-        return fields
-    }
-
-    /**
-     * Try
-     * override fun getAccessedFields() =
-     *         PsiTreeUtil.collectElementsOfType(psiMethod, PsiReferenceExpression::class.java)
-     *             .asSequence()
-     *             .mapNotNull { it.resolve() as? PsiField }
-     */
 }

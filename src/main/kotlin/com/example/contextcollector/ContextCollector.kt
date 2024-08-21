@@ -38,23 +38,6 @@ class ContextCollector(project: Project) {
         }
     }
 
-    /*private fun PsiMethod.allCalledMethods(): HashSet<PsiMethod> {
-        val calledMethods = HashSet<PsiMethod>()
-        this.accept(object : JavaRecursiveElementVisitor() {
-            override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
-                super.visitMethodCallExpression(expression)
-                expression.resolveMethod()?.let { calledMethods.add(it) }
-            }
-
-            override fun visitNewExpression(expression: PsiNewExpression) {
-                super.visitNewExpression(expression)
-                expression.resolveMethod()?.let { calledMethods.add(it) }
-            }
-        })
-        return calledMethods
-    }
-
-     */
 
     private fun PsiMethod.getAccessedFields() =
         PsiTreeUtil.collectElementsOfType(this, PsiReferenceExpression::class.java)
@@ -69,6 +52,6 @@ class ContextCollector(project: Project) {
 
 
     fun printContext() {
-        context.printContext()
+        print(context.getText())
     }
 }
