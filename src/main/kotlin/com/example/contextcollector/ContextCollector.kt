@@ -8,6 +8,7 @@ import java.util.Queue
 
 class ContextCollector(project: Project) {
     private val context = Context(project)
+    private val members = mutableSetOf<PsiMember>()
 
     fun collect(testClass: PsiClass) {
         val initialMethods = testClass
@@ -15,6 +16,8 @@ class ContextCollector(project: Project) {
             .flatMap { method -> method.getCalledMethods() }
 
         processMethodsQueue(LinkedList(initialMethods))
+
+        members.forEach { field -> context.add(field) }
     }
 
     private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>) {
@@ -31,10 +34,9 @@ class ContextCollector(project: Project) {
                     marked.add(m)
                 }
             method.getAccessedFields().forEach { field ->
-                context.add(field)
-
+                members.add(field)
             }
-            context.add(method)
+            members.add(method)
         }
     }
 
