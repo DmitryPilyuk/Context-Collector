@@ -18,7 +18,13 @@ class Context(private val project: Project) {
                     }
                     newClass
                 }
-            }.add(member)
+            }.add(if (member is PsiField) member.let {
+                val factory = PsiElementFactory.getInstance(project)
+                factory.createFieldFromText(
+                    "${it.modifierList?.text} ${it.type.presentableText} ${it.name};",
+                    it.context
+                )
+            } else member)
         }
     }
 
