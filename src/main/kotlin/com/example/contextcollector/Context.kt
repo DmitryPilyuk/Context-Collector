@@ -6,11 +6,12 @@ import com.intellij.psi.codeStyle.CodeStyleManager
 
 
 class Context(private val project: Project) {
-    private val map = HashMap<PsiClass, PsiClass>()
+    private val classes = HashMap<PsiClass, PsiClass>()
+    private val imports = HashSet<PsiImportStatement>()
 
     fun add(member: PsiMember) {
         member.containingClass?.let { clazz ->
-            map.getOrPut(clazz) {
+            classes.getOrPut(clazz) {
                 val factory = PsiElementFactory.getInstance(project)
                 clazz.name!!.let { name -> factory.createClass(name) }.let { newClass ->
                     clazz.annotations.forEach { annotation ->
@@ -28,11 +29,19 @@ class Context(private val project: Project) {
         }
     }
 
+    fun addImport(member: PsiMember) {
+        val factory = PsiElementFactory.getInstance(project)
+        member.containingClass
+            ?.let { factory.createImportStatement(it) }
+            ?.let { imports.add(it) }
+    }
+
 
     fun getText(): String {
         val strBuilder = StringBuilder()
         val codeStyleManager = CodeStyleManager.getInstance(project)
-        map.forEach { (_, clazz) ->
+        imports.forEach { strBuilder.append("${it.text}\n") }
+        classes.forEach { (_, clazz) ->
             codeStyleManager.reformat(clazz)
             strBuilder.append("${clazz.text}\n")
         }

@@ -15,28 +15,37 @@ class ContextCollector(project: Project) {
             .allMethods
             .flatMap { method -> method.getCalledMethods() }
 
-        processMethodsQueue(LinkedList(initialMethods))
+        processMethodsQueue(LinkedList(initialMethods), (testClass.containingFile as PsiJavaFile).packageName)
 
         members.forEach { field -> context.add(field) }
     }
 
-    private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>) {
+    private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>, packageName: String) {
         val marked = HashSet<PsiMethod>()
 
         while (!methodsQueue.isEmpty()) {
             val method = methodsQueue.poll()
+            if (method in marked) continue
+            marked.add(method)
+            if ((method.containingFile as PsiJavaFile).packageName.startsWith(packageName)) {
+                method
+                    .getCalledMethods()
+                    .filterNot { m -> m in marked }
+                    .forEach { m ->
+                        methodsQueue.offer(m)
 
-            method
-                .getCalledMethods()
-                .filterNot { m -> m in marked }
-                .forEach { m ->
-                    methodsQueue.offer(m)
-                    marked.add(m)
+                    }
+                method.getAccessedFields().forEach { field ->
+                    if ((field.containingFile as PsiJavaFile).packageName.startsWith(packageName)) {
+                        members.add(field)
+                    } else {
+                        context.addImport(field)
+                    }
                 }
-            method.getAccessedFields().forEach { field ->
-                members.add(field)
+                members.add(method)
+            } else {
+                context.addImport(method)
             }
-            members.add(method)
         }
     }
 
