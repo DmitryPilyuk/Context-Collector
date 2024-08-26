@@ -1,12 +1,13 @@
 package com.example.contextcollector
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import java.util.LinkedList
 import java.util.Queue
 
-class ContextCollector(project: Project) {
+class ContextCollector(private val project: Project) {
     private val context = Context(project)
     private val members = mutableSetOf<PsiMember>()
 
@@ -15,19 +16,19 @@ class ContextCollector(project: Project) {
             .allMethods
             .flatMap { method -> method.getCalledMethods() }
 
-        processMethodsQueue(LinkedList(initialMethods), (testClass.containingFile as PsiJavaFile).packageName)
+        processMethodsQueue(LinkedList(initialMethods))
 
         members.forEach { field -> context.add(field) }
     }
 
-    private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>, packageName: String) {
+    private fun processMethodsQueue(methodsQueue: Queue<PsiMethod>) {
         val marked = HashSet<PsiMethod>()
 
         while (!methodsQueue.isEmpty()) {
             val method = methodsQueue.poll()
             if (method in marked) continue
             marked.add(method)
-            if ((method.containingFile as PsiJavaFile).packageName.startsWith(packageName)) {
+            if (method.isInProject()) {
                 method
                     .getCalledMethods()
                     .filterNot { m -> m in marked }
@@ -36,7 +37,7 @@ class ContextCollector(project: Project) {
 
                     }
                 method.getAccessedFields().forEach { field ->
-                    if ((field.containingFile as PsiJavaFile).packageName.startsWith(packageName)) {
+                    if (field.isInProject()) {
                         members.add(field)
                     } else {
                         context.addImport(field)
@@ -61,6 +62,19 @@ class ContextCollector(project: Project) {
             .asSequence()
             .mapNotNull { it.resolveMethod() }
 
+    private fun PsiMember.isInProject(): Boolean =
+        this.containingFile.isInProject()
+
+    private fun PsiClass.isInProject(): Boolean =
+        this.containingFile.isInProject()
+
+    private fun PsiFile.isInProject(): Boolean {
+        this.virtualFile?.let { file ->
+            val projectFileIndex = ProjectRootManager.getInstance(project).fileIndex
+            return projectFileIndex.isInSourceContent(file) && !projectFileIndex.isInLibrary(file)
+        }
+        return false
+    }
 
     fun printContext() {
         print(context.getText())
